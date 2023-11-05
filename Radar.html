@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedded Radar</title>
+    <style>
+        .container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .frame {
+            width: 100%;
+            height: 950px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .frame img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: auto;
+        }
+
+        select {
+            width: 30%;
+            display: inline-block;
+            margin: 20px 1%;
+        }
+
+        p {
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="frame">
+            <img id="satelliteImage" alt="Satellite Image">
+            <p id="imageURLText"></p>
+            <div id="dropdowns"></div>
+        </div>
+    </div>
+
+    <script>
+        function generateImageURL(time) {
+            const year = time.getFullYear();
+            const month = String(time.getMonth() + 1).padStart(2, '0');
+            const day = String(time.getDate()).padStart(2, '0');
+            const hours = String(time.getHours()).padStart(2, '0');
+            const minutes = String(time.getMinutes()).padStart(2, '0');
+
+            return `https://radar.kma.go.kr/cgi-bin/center/nph-rdr_cmp_img?tm=${year}${month}${day}${hours}${minutes}&cmp=HSP&qcd=HSO&obs=ECHD&map=HC&size=800&xp=-9999&yp=-9999&zoom=1&wv=00&ht=1500&color=C4&topo=1&ZRa=&ZRb=&lat=&lon=&lonlat=0&x1=&y1=&x2=&y2=&center=0&typ=0&aws=01&wt=0`;
+        }
+
+        function formatDateForDisplay(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+
+            return `${year}년 ${month}월 ${day}일 ${hours}시 ${minutes}분`;
+        }
+
+        function updateImageURL() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - 2);
+            const adjustedMinutes = Math.floor(now.getMinutes() / 5) * 5;
+            now.setMinutes(adjustedMinutes);
+
+            const imageURL = generateImageURL(now);
+            const satelliteImage = document.getElementById('satelliteImage');
+            const imageURLText = document.getElementById('imageURLText');
+            satelliteImage.src = imageURL;
+            imageURLText.innerText = imageURL;
+
+            const intervals = [5, 10, 60];
+            const dropdowns = document.getElementById('dropdowns');
+            dropdowns.innerHTML = '';
+
+            intervals.forEach(interval => {
+                const select = document.createElement('select');
+                select.onchange = function () {
+                    const selectedURL = this.value;
+                    satelliteImage.src = selectedURL;
+                    imageURLText.innerText = selectedURL;
+                };
+                for (let i = 0; i < 12; i++) {
+                    const pastTime = new Date(now);
+                    pastTime.setMinutes(now.getMinutes() - (i * interval));
+                    const pastURL = generateImageURL(pastTime);
+
+                    const option = document.createElement('option');
+                    option.value = pastURL;
+                    option.textContent = formatDateForDisplay(pastTime);
+                    select.appendChild(option);
+                }
+                dropdowns.appendChild(select);
+            });
+
+            setTimeout(updateImageURL, 5 * 60 * 1000);
+        }
+
+        window.onload = function() {
+            updateImageURL();
+        };
+    </script>
+</body>
+
+</html>

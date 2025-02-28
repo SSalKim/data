@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>수치일기도표출시스템(CDS)</title>
+    <style>
+        #image-container {
+            text-align: center; /* 이미지 가운데 정렬 */
+        }
+        
+        #image-container img {
+            display: block; /* 이미지를 블록으로 설정하여 수평 중앙 정렬 */
+            margin: 10px auto; /* 이미지를 중앙으로 정렬하고 위/아래 간격 추가 */
+        }
+        
+        #slider-container {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        input[type="range"] {
+            width: 80%;
+        }
+        
+        .no-file {
+            display: none;
+            color: blue;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        h1, h3 {
+            text-align: center;
+            margin: 0px;
+        }
+    </style>        
+    <script>
+        function updateImages() {
+            var selectedModel = document.getElementById("modelType").value; // 모델 종류 (ECMW, KIM, UM)
+            var selectedDate = document.getElementById("datePicker").value.replace(/-/g, ""); // YYYYMMDD
+            var selectedHour = document.getElementById("hourSelect").value; // HH (00 또는 12)
+            var selectedType = document.getElementById("dataType").value; // 자료 종류
+            var selectedRegion = document.getElementById("regionType").value; // 기본예상도 (아시아/한반도)
+
+            if (!selectedDate) {
+                alert("날짜를 선택하세요!");
+                return;
+            }
+
+            var yearMonth = selectedDate.substring(0, 6); // YYYYMM
+            var day = selectedDate.substring(6, 8); // DD
+            var dateTime = selectedDate + selectedHour; // YYYYMMDDHH
+
+            // 모델별 기본 URL 및 파일명 패턴 설정
+            var baseUrl = "";
+            var fileNamePattern = "";
+
+            if (selectedRegion === "asia") {
+                // 기본예상도
+                if (selectedModel === "ECMW") {
+                    baseUrl = `https://data.kma.go.kr/CHT/ECMW/${yearMonth}/${day}/`;
+                    fileNamePattern = `ecmw_lc40_asia_${selectedType}_s000_${dateTime}.gif`;
+                } else if (selectedModel === "KIM") {
+                    baseUrl = `https://data.kma.go.kr/CHT/KIMG/${yearMonth}/${day}/`;
+                    fileNamePattern = `kim_gdps_erly_asia_${selectedType}_ft06_pa4_s000_${dateTime}.png`;
+                } else if (selectedModel === "UM") {
+                    baseUrl = `https://data.kma.go.kr/CHT/GDPS/${yearMonth}/${day}/`;
+                    fileNamePattern = `gdps_erly_asia_${selectedType}_ft06_pa4_s000_${dateTime}.gif`;
+                }
+            } else {
+                // 기본예상도(한반도)
+                if (selectedModel === "ECMW") {
+                    baseUrl = `https://data.kma.go.kr/CHT/ECMW/${yearMonth}/${day}/`;
+                    fileNamePattern = `ecmw_lc20_hkor_${selectedType}_s000_${dateTime}.gif`;
+                } else if (selectedModel === "KIM") {
+                    baseUrl = `https://data.kma.go.kr/CHT/KIMG/${yearMonth}/${day}/`;
+                    fileNamePattern = `kim_gdps_erly_hkor_${selectedType}_s000_${dateTime}.png`;
+                } else if (selectedModel === "UM") {
+                    baseUrl = `https://data.kma.go.kr/CHT/GDPS/${yearMonth}/${day}/`;
+                    fileNamePattern = `gdps_erly_hkor_${selectedType}_s000_${dateTime}.gif`;
+                }
+            }
+
+            // 기본 예측 시간을 288까지 포함
+            var forecastHours = [
+                "s000", "s003", "s006", "s009", "s012", "s015", "s018", "s021", "s024", "s027", "s030",
+                "s033", "s036", "s039", "s042", "s045", "s048", "s051", "s054", "s057", "s060", "s063",
+                "s066", "s069", "s072", "s075", "s078", "s081", "s084", "s090", "s096", "s108", "s120",
+                "s132", "s144", "s156", "s168", "s180", "s192", "s216", "s228", "s240", 
+                "s252", "s264", "s276", "s288"
+            ];
+
+            // ECMWF 모델은 s240까지만 표시
+            if (selectedModel === "ECMW") {
+                forecastHours = forecastHours.slice(0, forecastHours.indexOf("s240") + 1);
+            }
+
+            // UM과 KIM 모델이 06Z 또는 18Z일 때, 예측 시간 s000부터 s084까지만 표시
+            if ((selectedModel === "UM" || selectedModel === "KIM") && (selectedHour === "06" || selectedHour === "18")) {
+                forecastHours = forecastHours.slice(0, forecastHours.indexOf("s084") + 1);
+            }
+
+
+            var imageContainer = document.getElementById("image-container");
+            imageContainer.innerHTML = ""; // 기존 이미지 제거
+
+
+
+
+
+            
+
+            forecastHours.forEach(function(hour, index) {
+                var img = document.createElement("img");
+                img.src = baseUrl + fileNamePattern.replace("s000", hour); // s000 -> 예측시간으로 바꾸기
+                img.alt = selectedType + " " + hour + "시간 자료";
+                img.id = "img_" + index;
+                img.onerror = function() {
+                    this.style.display = "none";
+                    document.getElementById("no-file-" + index).style.display = "block";
+                };
+                if (index !== 0) img.style.display = "none"; // 첫 번째 이미지만 표시
+                imageContainer.appendChild(img);
+
+                var noFileMessage = document.createElement("div");
+                noFileMessage.id = "no-file-" + index;
+                noFileMessage.className = "no-file";
+                noFileMessage.innerText = "파일이 없습니다.";
+                imageContainer.appendChild(noFileMessage);
+            });
+
+            // 슬라이더 범위 설정
+            document.getElementById("slider").max = forecastHours.length - 1;
+            document.getElementById("slider").value = 0;
+        }
+
+
+        function changeImage() {
+            var index = document.getElementById("slider").value;
+            var images = document.querySelectorAll("#image-container img");
+            var noFileMessages = document.querySelectorAll("#image-container .no-file");
+
+            images.forEach(img => img.style.display = "none");
+            noFileMessages.forEach(msg => msg.style.display = "none");
+
+            if (document.getElementById("img_" + index).naturalWidth === 0) {
+                document.getElementById("no-file-" + index).style.display = "block";
+            } else {
+                document.getElementById("img_" + index).style.display = "block";
+            }
+        }
+
+        function updateHourSelect() {
+            var modelType = document.getElementById("modelType").value;
+            var hourSelect = document.getElementById("hourSelect");
+            hourSelect.innerHTML = ""; // 기존 옵션 제거
+
+            if (modelType === "KIM" || modelType === "UM") {
+                hourSelect.add(new Option("00Z", "00"));
+                hourSelect.add(new Option("06Z", "06"));
+                hourSelect.add(new Option("12Z", "12"));
+                hourSelect.add(new Option("18Z", "18"));
+            } else if (modelType === "ECMW") {
+                hourSelect.add(new Option("00Z", "00"));
+                hourSelect.add(new Option("12Z", "12"));
+            }
+        }
+
+        window.onload = function() {
+            updateHourSelect(); // 페이지 로드 시 초기 옵션 설정
+            document.getElementById("modelType").addEventListener("change", updateHourSelect); // 모델 선택 변경 시 옵션 업데이트
+        };
+    </script>
+</head>
+<body>
+    <h1>수치일기도표출시스템</h1>
+    <h3>Chart Display System (CDS) v1.1</h3>
+    <div style="text-align: center;">
+
+        <select id="modelType">
+            <option value="KIM">KIM전구</option>
+            <option value="UM">UM전구</option>
+            <option value="ECMW">ECMWF</option>
+        </select>
+        <label for="modelType">모델</label>
+    
+        <input type="date" id="datePicker">
+    
+        <select id="hourSelect">
+            <option value="00">00Z</option>
+            <option value="06">06Z</option>
+            <option value="12">12Z</option>
+            <option value="18">18Z</option>
+        </select>
+        <label for="hourSelect">발표</label>
+
+        <select id="regionType">
+            <option value="asia">기본예상도</option>
+            <option value="hkor">기본예상도(한반도)</option>
+        </select>
+    
+        <select id="dataType">
+            <option value="gph200">200/300 고도,기온,풍속</option>
+            <option value="gph500">500 고도,기온,와도</option>
+            <option value="gph700">700 고도,상당온위</option>
+            <option value="ept850">850 고도,상당온위</option>
+            <option value="ept925">925 고도,상당온위</option>
+            <option value="thk500">1000-500 층후</option>
+            <option value="thk700">1000-700 층후</option>
+            <option value="thk850">1000-850 층후</option>
+            <option value="wnd200">200/300 유선,풍속</option>
+            <option value="wnd500">500 유선,풍속</option>
+            <option value="wnd700">700 유선,풍속</option>
+            <option value="wnd850">850 유선,풍속</option>
+            <option value="wnd925">925 유선,풍속</option>
+            <option value="acrain">총누적강수량</option>
+            <option value="acptot">시간별 누적강수량</option>
+            <option value="snw950">눈혼합비</option>
+            <option value="merg">신적설(수상당량비 적용)</option>
+            <option value="anltpw">가강수량,MSLP</option>
+            <option value="ttd700">700 습수(T-Td)</option>
+            <option value="anl850">850 습수(T-Td)</option>
+            <option value="anl925">925 습수(T-Td)</option>
+            <option value="anlsfc">지상 습수(T-Td)</option>
+            <option value="capcin">CAPE</option>
+            <option value="sbcape">지상기반 CAPE</option>
+            <option value="srh03k">SRH</option>
+        </select>
+    
+        <button onclick="updateImages()">조회</button>
+    </div>
+
+    <div id="slider-container">
+        <input type="range" id="slider" min="0" max="40" value="0" oninput="changeImage()">
+    </div>
+
+    <div id="image-container"></div>
+</body>
+</html>
